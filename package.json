@@ -1,0 +1,30 @@
+{
+    "name": "typst-ray",
+    "private": true,
+    "version": "0.0.0",
+    "license": "AGPL-3.0-or-later",
+    "type": "module",
+    "scripts": {
+        "dev": "npm run predev && vite",
+        "predev": "test -f wasm/typstray_wasm_bg.wasm || npm run build:wasm:fast",
+        "build:wasm": "wasm-pack build crates/typstray-wasm --release --target web --out-dir ../../wasm --out-name typstray_wasm",
+        "build:wasm:fast": "wasm-pack build crates/typstray-wasm --release --no-opt --target web --out-dir ../../wasm --out-name typstray_wasm",
+        "build": "vite build",
+        "prebuild": "npm run build:wasm",
+        "preview": "vite preview",
+        "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json"
+    },
+    "dependencies": {
+        "@codemirror/state": "^6.7.0",
+        "codemirror": "^6.0.0"
+    },
+    "devDependencies": {
+        "@sveltejs/vite-plugin-svelte": "^7.3.1",
+        "@tsconfig/svelte": "^5.0.8",
+        "@types/node": "^24.19.2",
+        "svelte": "^5.57.3",
+        "svelte-check": "^4.7.7",
+        "typescript": "~6.0.3",
+        "vite": "^8.3.6"
+    }
+}
