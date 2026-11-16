@@ -19,7 +19,7 @@
 {#if hasChildren}
     <details bind:open>
         <summary onmouseenter={() => onhover(node)} onmouseleave={() => onhover(null)}>
-            <b>{node.kind}</b>
+            <b class:error={node.error}>{node.kind}</b>
             {#if node.text}<bdi class="label" title={node.text}>{node.text}</bdi>{/if}
             <span class="range">{node.range?.start}..{node.range?.end}</span>
             <NodeAttributes attrs={node.attrs} />
@@ -38,7 +38,7 @@
          onmouseenter={() => onhover(node)}
          onmouseleave={() => onhover(null)}
          onclick={() => onclick(node)}>
-        <b>{node.kind}</b>
+        <b class:error={node.error}>{node.kind}</b>
         {#if node.text}<bdi class="label" title={node.text}>{node.text}</bdi>{/if}
         <span class="range">{node.range?.start}..{node.range?.end}</span>
         <NodeAttributes attrs={node.attrs} />
@@ -63,6 +63,10 @@
 
     summary:hover, .leaf:hover {
         background: var(--hl);
+    }
+
+    .error {
+        color: var(--error);
     }
 
     .label {

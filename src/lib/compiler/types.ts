@@ -11,13 +11,19 @@ export interface AnalysisNode {
     text: string | null,
     attrs: Record<string, string>,
     error: boolean,
-    children: [AnalysisNode]
+    children: AnalysisNode[]
+};
+
+export interface Diagnostic {
+    message: string,
+    range: SourceRange | null,
 };
 
 export interface Analysis {
     ast: AnalysisNode,
     content: AnalysisNode | null,
-    layouts: [AnalysisNode]
+    layouts: AnalysisNode[],
+    diagnostics: Diagnostic[]
 };
 
 export type Request = {

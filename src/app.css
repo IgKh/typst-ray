@@ -7,6 +7,7 @@
     --line:#ddd;
     --accent:#187eaa;
     --hl:#ffe58a;
+    --error:#d33a3a;
 }
 @media (prefers-color-scheme: dark) {
     :root {
@@ -16,6 +17,7 @@
         --line:#33373b;
         --accent:#63bde3;
         --hl:#6b5a14;
+        --error:#e5605e;
     }
 }
 

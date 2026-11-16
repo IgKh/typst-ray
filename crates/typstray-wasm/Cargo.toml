@@ -3,7 +3,7 @@ name = "typstray-wasm"
 version = "0.0.0"
 license = "AGPL-3.0-or-later"
 edition = "2024"
-rust-version = "1.92"
+rust-version = "1.100"
 publish = false
 
 [lib]

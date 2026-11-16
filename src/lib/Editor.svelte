@@ -59,14 +59,23 @@
         });
     }
 
-    export function scrollToRange(range: SourceRange | null) {
+    export function scrollToRange(range: SourceRange | null, focus: boolean) {
         if (!range) {
             return;
         }
+
+        const len = view.state.doc.length;
         view?.dispatch({
-            selection: { anchor: range.start, head: range.end },
+            selection: {
+                anchor: Math.min(range.start, len),
+                head: Math.min(range.end, len)
+            },
             scrollIntoView: true
         });
+
+        if (focus) {
+            view?.focus();
+        }
     }
 
     function codemirror(node: Element) {

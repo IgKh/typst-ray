@@ -1,16 +1,18 @@
 <!-- SPDX-FileCopyrightText: 2026 Igor Khanin -->
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
+    import Diagnostics from "./lib/Diagnostics.svelte";
     import Editor from "./lib/Editor.svelte";
     import TreeNode from "./lib/TreeNode.svelte";
 
     import { analyze } from "./lib/compiler/client"
-    import type { Analysis, AnalysisNode } from "./lib/compiler/types";
+    import type { Analysis, AnalysisNode, Diagnostic } from "./lib/compiler/types";
 
     let src = $state("FOO");
     let compiledSrc = $state<string | null>(null);
     let busy = $state(false);
     let result = $state<Analysis | null>(null);
+    let systemError = $state<string | null>(null);
     let activeTab = $state("ast");
     let activeLayoutIndex = $state(0);
     let stale = $derived(result !== null && src !== compiledSrc);
@@ -27,12 +29,22 @@
         try {
             result = await analyze(source);
             compiledSrc = source;
+            systemError = null;
+
             if (activeLayoutIndex >= result.layouts.length) {
                 activeLayoutIndex = Math.max(0, result.layouts.length - 1);
             }
+            if (!result.content || (activeTab === "layout" && result.layouts.length === 0)) {
+                activeTab = "ast";
+            }
         }
         catch (err) {
-            // TODO
+            if (err instanceof Error) {
+                systemError = err.message;
+            }
+            else {
+                systemError = String(err);
+            }
         }
         finally {
             busy = false;
@@ -46,7 +58,11 @@
 
     function onTreeNodeClick(node: AnalysisNode) {
         const range = $state.snapshot(node?.range);
-        editor.scrollToRange(range);
+        editor.scrollToRange(range, false);
+    }
+
+    function onDiagnosticClick(diag: Diagnostic) {
+        editor.scrollToRange(diag.range, true);
     }
 </script>
 
@@ -68,16 +84,21 @@
         <div id="editor-wrapper">
             <Editor onsubmit={compile} bind:value={src} bind:this={editor} />
         </div>
+        <div id="diagnostics-wrapper" role="region" aria-label="Diagnostics">
+            <Diagnostics diagnostics={result?.diagnostics} systemError={systemError} onclick={onDiagnosticClick} />
+        </div>
     </section>
 
     <section id="results-section">
         <nav>
             <button class:active={activeTab === 'ast'}
-                    onclick={() => (activeTab = 'ast')}>
+                    onclick={() => (activeTab = 'ast')}
+                    disabled={!result} >
                 AST
             </button>
             <button class:active={activeTab === 'content'}
-                    onclick={() => (activeTab = 'content')}>
+                    onclick={() => (activeTab = 'content')}
+                    disabled={!result?.content}>
                 Content
             </button>
             {#each result?.layouts ?? [] as _, index}
@@ -85,6 +106,8 @@
                         onclick={() => (activeTab = 'layout', activeLayoutIndex = index)}>
                     Layout #{index + 1}
                 </button>
+            {:else}
+                <button disabled>Layout</button>
             {/each}
         </nav>
         <div class="result-panel">
@@ -99,7 +122,7 @@
                     {/key}
                 {/if}
             {:else}
-                <!-- TODO put pending message -->
+                <span style="color: var(--muted)">Please click on Compile</span>
             {/if}
         </div>
     </section>
@@ -209,6 +232,12 @@
         flex: 1;
         min-height: 0;
         height: 100%;
+    }
+
+    #diagnostics-wrapper {
+        flex: none;
+        max-height: 30%;
+        overflow: auto;
     }
 
     #results-section {

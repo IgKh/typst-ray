@@ -3,7 +3,7 @@
 use typst::{
     World,
     comemo::{Track, Tracked},
-    ecow::EcoVec,
+    ecow::{EcoVec, eco_format},
     engine::{Route, Sink, Traced},
     foundations::{StyleChain, Target, TargetElem},
     introspection::Introspector,
@@ -62,6 +62,7 @@ pub fn compile(world: Tracked<dyn World + '_>) -> CompilationResult {
 
     let mut history: Vec<PagedDocument> = vec![];
     let mut document: PagedDocument;
+    let mut did_not_converge = false;
 
     loop {
         let introspector = history
@@ -100,7 +101,7 @@ pub fn compile(world: Tracked<dyn World + '_>) -> CompilationResult {
         }
 
         if history.len() >= 4 {
-            // TODO return an error
+            did_not_converge = true;
             sink.extend_from_sink(subsink);
             break;
         }
@@ -108,10 +109,18 @@ pub fn compile(world: Tracked<dyn World + '_>) -> CompilationResult {
         history.push(document);
     }
 
+    let mut diagnostics = sink.delayed();
+    if did_not_converge {
+        diagnostics.push(typst::diag::SourceDiagnostic::error(
+            typst_syntax::DiagSpan::detached(),
+            eco_format!("Document did not converge within five iterations!"),
+        ));
+    }
+
     CompilationResult {
         source,
         content: Some(content),
         documents: history,
-        diagnostics: EcoVec::new(),
+        diagnostics,
     }
 }

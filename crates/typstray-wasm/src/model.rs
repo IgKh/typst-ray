@@ -1,6 +1,9 @@
 // SPDX-FileCopyrightText: 2026 Igor Khanin
 // SPDX-License-Identifier: AGPL-3.0-or-later
-use std::{collections::BTreeMap, ops::Range};
+use std::{
+    collections::{BTreeMap, HashSet},
+    ops::Range,
+};
 
 use serde::Serialize;
 use typst::{
@@ -69,7 +72,7 @@ pub fn build_analysis(result: &CompilationResult) -> Analysis {
         .map(|document| convert_document(document, source))
         .collect();
 
-    let diagnostics = convert_diagnostics(&result.diagnostics, source);
+    let diagnostics = convert_diagnostics(result.diagnostics.clone(), source);
 
     Analysis {
         ast,
@@ -354,11 +357,18 @@ fn describe_stroke(stroke: &FixedStroke) -> String {
 }
 
 fn convert_diagnostics(
-    diagnostics: &EcoVec<typst::diag::SourceDiagnostic>,
+    mut diagnostics: EcoVec<typst::diag::SourceDiagnostic>,
     source: &Source,
 ) -> Vec<Diagnostic> {
+    // Dedup diagnostics
+    let mut unique = HashSet::new();
+    diagnostics.retain(|diag| {
+        let hash = typst::utils::hash128(&(&diag.span, &diag.message));
+        unique.insert(hash)
+    });
+
     diagnostics
-        .iter()
+        .into_iter()
         .map(|diag| Diagnostic {
             message: diag.message.to_string(),
             range: process_span(diag.span, source),

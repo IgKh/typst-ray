@@ -28,8 +28,7 @@ pub struct TypstRayWorld {
 impl TypstRayWorld {
     pub fn new(content: &str) -> Self {
         let fonts: Vec<_> = typst_assets::fonts()
-            .map(|data| Font::iter(Bytes::new(data)))
-            .flatten()
+            .flat_map(|data| Font::iter(Bytes::new(data)))
             .collect();
         let book = FontBook::from_fonts(&fonts);
 
