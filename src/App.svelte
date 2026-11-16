@@ -5,13 +5,15 @@
     import TreeNode from "./lib/TreeNode.svelte";
 
     import { analyze } from "./lib/compiler/client"
-    import type { Analysis } from "./lib/compiler/types";
+    import type { Analysis, AnalysisNode } from "./lib/compiler/types";
 
     let src = $state("FOO");
     let result = $state<Analysis | null>(null);
     let busy = $state(false);
     let activeTab = $state("ast");
     let activeLayoutIndex = $state(0);
+
+    let editor: Editor;
 
     async function compile() {
         busy = true;
@@ -28,6 +30,11 @@
             busy = false;
         }
     }
+
+    function onTreeNodeHover(node: AnalysisNode) {
+        const range = $state.snapshot(node?.range);
+        editor.highlightRange(range);
+    }
 </script>
 
 <header>
@@ -40,8 +47,8 @@
             <!-- TODO: Improve look, make Ctrl+Enter trigger it -->
             <button onclick={compile} disabled={busy}>{busy ? "Compiling..." : "Compile"}</button>
         </nav>
-        <div id="editor-wrapper" style="flex: 1">
-            <Editor bind:value={src} />
+        <div id="editor-wrapper">
+            <Editor bind:value={src} bind:this={editor} />
         </div>
     </section>
 
@@ -65,12 +72,12 @@
         <div class="result-panel">
             {#if result}
                 {#if activeTab === 'ast'}
-                    <TreeNode node={result.ast} />
+                    <TreeNode node={result.ast} onhover={onTreeNodeHover} />
                 {:else if activeTab === 'content'}
-                    <TreeNode node={result.content} />
+                    <TreeNode node={result.content} onhover={onTreeNodeHover} />
                 {:else if activeTab === 'layout'}
                     {#key activeLayoutIndex}
-                        <TreeNode node={result.layouts[activeLayoutIndex]} />
+                        <TreeNode node={result.layouts[activeLayoutIndex]} onhover={onTreeNodeHover} />
                     {/key}
                 {/if}
             {:else}
@@ -110,6 +117,12 @@
         overflow: hidden;
         display: flex;
         flex-direction: column;
+    }
+
+    #editor-wrapper {
+        flex: 1;
+        min-height: 0;
+        height: 100%;
     }
 
     #results-section {

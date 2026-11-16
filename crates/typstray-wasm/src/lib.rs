@@ -27,7 +27,7 @@ pub fn analyze(src: &str) -> String {
     let world = TypstRayWorld::new(src);
 
     let result = compiler::compile((&world as &dyn World).track());
-    let analysis = model::build_analysis(&result, &world);
+    let analysis = model::build_analysis(&result);
 
     serde_json::to_string(&analysis).unwrap()
 }

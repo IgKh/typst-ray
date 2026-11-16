@@ -1,8 +1,12 @@
 <!-- SPDX-FileCopyrightText: 2026 Igor Khanin -->
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-    import {EditorState} from "@codemirror/state";
-    import {EditorView, basicSetup} from "codemirror";
+    import {EditorState, StateEffect, StateField} from "@codemirror/state";
+    import {EditorView, Decoration} from "@codemirror/view";
+    import {basicSetup} from "codemirror";
+
+    import type {DecorationSet} from "@codemirror/view";
+    import type {SourceRange} from "./compiler/types";
 
     let {
         value = $bindable('')
@@ -10,11 +14,56 @@
 
     let view: EditorView;
 
+    const setHighlight = StateEffect.define<SourceRange | null>({
+        map(range, change) {
+            if (!range) {
+                return range;
+            }
+            return {
+                start: change.mapPos(range.start),
+                end: change.mapPos(range.end)
+            };
+        }
+    });
+
+    const highlightMark = Decoration.mark({
+        class: "cm-hl"
+    });
+
+    const highlightField = StateField.define<DecorationSet>({
+        create() {
+            return Decoration.none;
+        },
+        update(decorationSet, tx) {
+            for (let effect of tx.effects) {
+                if (effect.is(setHighlight)) {
+                    const range = effect.value;
+                    if (range && range.start < range.end) {
+                        return Decoration.set([highlightMark.range(range.start, range.end)]);
+                    } else {
+                        return Decoration.none;
+                    }
+                }
+            }
+            return decorationSet.map(tx.changes);
+        },
+        provide(field) {
+            return EditorView.decorations.from(field);
+        }
+    });
+
+    export function highlightRange(range: SourceRange | null) {
+        view?.dispatch({
+            effects: setHighlight.of(range)
+        });
+    }
+
     function codemirror(node: Element) {
         const state = EditorState.create({
             doc: value,
             extensions: [
                 basicSetup,
+                highlightField,
                 EditorView.updateListener.of((update) => {
                     if (update.docChanged) {
                         value = update.state.doc.toString();

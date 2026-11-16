@@ -5,6 +5,7 @@
 
     let {
         node,
+        onhover,
         depth = 0
     } = $props();
 
@@ -15,22 +16,22 @@
 
 {#if hasChildren}
     <details bind:open>
-        <summary>
+        <summary onmouseenter={() => onhover(node)} onmouseleave={() => onhover(null)}>
             <b>{node.kind}</b> <span class="label">{node.text}</span>
-            <span class="range">{node.start}..{node.end}</span>
+            <span class="range">{node.range?.start}..{node.range?.end}</span>
         </summary>
         {#if open}
             <div class="children">
                 {#each node.children as child}
-                    <TreeNode node={child} depth={depth + 1} />
+                    <TreeNode node={child} onhover={onhover} depth={depth + 1} />
                 {/each}
             </div>
         {/if}
     </details>
 {:else}
-    <div class="leaf" role="presentation">
+    <div class="leaf" role="presentation" onmouseenter={() => onhover(node)} onmouseleave={() => onhover(null)}>
         <b>{node.kind}</b> <span class="label">{node.text}</span>
-        <span class="range">{node.start}..{node.end}</span>
+        <span class="range">{node.range?.start}..{node.range?.end}</span>
     </div>
 {/if}
 

@@ -1,24 +1,37 @@
 // SPDX-FileCopyrightText: 2026 Igor Khanin
 // SPDX-License-Identifier: AGPL-3.0-or-later
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, ops::Range};
 
 use serde::Serialize;
 use typst::{
-    World, WorldExt,
     ecow::EcoVec,
     foundations::{Content, Repr, Value},
     layout::{Frame, FrameItem},
 };
 use typst_layout::PagedDocument;
-use typst_syntax::LinkedNode;
+use typst_syntax::{DiagSpan, DiagSpanKind, LinkedNode, Source};
 
 use crate::compiler::CompilationResult;
 
 #[derive(Serialize)]
+pub struct SourceRange {
+    start: usize,
+    end: usize,
+}
+
+impl From<Range<usize>> for SourceRange {
+    fn from(value: Range<usize>) -> Self {
+        Self {
+            start: value.start,
+            end: value.end,
+        }
+    }
+}
+
+#[derive(Serialize)]
 pub struct AnalysisNode {
     kind: String,
-    start: Option<usize>,
-    end: Option<usize>,
+    range: Option<SourceRange>,
     text: Option<String>,
     attrs: BTreeMap<String, String>,
     error: bool,
@@ -28,8 +41,7 @@ pub struct AnalysisNode {
 #[derive(Serialize)]
 pub struct Diagnostic {
     message: String,
-    start: Option<usize>,
-    end: Option<usize>,
+    range: Option<SourceRange>,
 }
 
 #[derive(Serialize)]
@@ -40,21 +52,22 @@ pub struct Analysis {
     diagnostics: Vec<Diagnostic>,
 }
 
-pub fn build_analysis(result: &CompilationResult, world: &dyn World) -> Analysis {
-    let ast = convert_ast_node(LinkedNode::new(result.source.root()));
+pub fn build_analysis(result: &CompilationResult) -> Analysis {
+    let source = &result.source;
+    let ast = convert_ast_node(LinkedNode::new(source.root()), source);
 
     let content = result
         .content
         .as_ref()
-        .map(|content| convert_content(content, world));
+        .map(|content| convert_content(content, source));
 
     let layouts = result
         .documents
         .iter()
-        .map(|document| convert_document(document, world))
+        .map(|document| convert_document(document, source))
         .collect();
 
-    let diagnostics = convert_diagnostics(&result.diagnostics, world);
+    let diagnostics = convert_diagnostics(&result.diagnostics, source);
 
     Analysis {
         ast,
@@ -64,15 +77,16 @@ pub fn build_analysis(result: &CompilationResult, world: &dyn World) -> Analysis
     }
 }
 
-fn convert_ast_node(node: LinkedNode<'_>) -> AnalysisNode {
-    let range = node.range();
+fn convert_ast_node(node: LinkedNode<'_>, source: &Source) -> AnalysisNode {
     let text = Some(node.leaf_text().to_string()).filter(|s| !s.is_empty());
-    let children: Vec<_> = node.children().map(convert_ast_node).collect();
+    let children: Vec<_> = node
+        .children()
+        .map(|child| convert_ast_node(child, source))
+        .collect();
 
     AnalysisNode {
         kind: format!("{:?}", node.kind()),
-        start: Some(range.start),
-        end: Some(range.end),
+        range: process_range(node.range(), source),
         text,
         attrs: BTreeMap::new(),
         error: node.diagnosis().errors,
@@ -83,20 +97,20 @@ fn convert_ast_node(node: LinkedNode<'_>) -> AnalysisNode {
 fn collect_content_attributes(
     name: &str,
     value: &Value,
-    world: &dyn World,
+    source: &Source,
     attrs: &mut BTreeMap<String, String>,
     children: &mut Vec<AnalysisNode>,
 ) {
     match value {
-        Value::Content(c) => children.push(convert_content(c, world)),
+        Value::Content(c) => children.push(convert_content(c, source)),
         Value::Array(arr) => {
             for item in arr {
-                collect_content_attributes(name, item, world, attrs, children);
+                collect_content_attributes(name, item, source, attrs, children);
             }
         }
         Value::Dict(dict) => {
             for (_, value) in dict {
-                collect_content_attributes(name, value, world, attrs, children);
+                collect_content_attributes(name, value, source, attrs, children);
             }
         }
         _ => {
@@ -105,19 +119,17 @@ fn collect_content_attributes(
     }
 }
 
-fn convert_content(content: &Content, world: &dyn World) -> AnalysisNode {
-    let range = world.range(content.span());
-    let start = range.as_ref().map(|r| r.start);
-    let end = range.as_ref().map(|r| r.end);
+fn convert_content(content: &Content, source: &Source) -> AnalysisNode {
+    let range = process_span(content.span(), source);
 
     let mut attrs = BTreeMap::new();
     let mut children = vec![];
 
     if let Some(seq) = content.to_packed::<typst::foundations::SequenceElem>() {
-        children.extend(seq.children.iter().map(|c| convert_content(c, world)));
+        children.extend(seq.children.iter().map(|c| convert_content(c, source)));
     } else {
         for (name, value) in content.fields() {
-            collect_content_attributes(&name, &value, world, &mut attrs, &mut children);
+            collect_content_attributes(&name, &value, source, &mut attrs, &mut children);
         }
     }
 
@@ -127,8 +139,7 @@ fn convert_content(content: &Content, world: &dyn World) -> AnalysisNode {
 
     AnalysisNode {
         kind: content.elem().name().to_string(),
-        start,
-        end,
+        range,
         text,
         attrs,
         error: false,
@@ -136,21 +147,19 @@ fn convert_content(content: &Content, world: &dyn World) -> AnalysisNode {
     }
 }
 
-fn convert_document(document: &PagedDocument, world: &dyn World) -> AnalysisNode {
+fn convert_document(document: &PagedDocument, source: &Source) -> AnalysisNode {
     let pages = document.pages().iter().map(|page| AnalysisNode {
         kind: format!("Page {}", page.number),
-        start: None,
-        end: None,
+        range: None,
         text: None,
         attrs: BTreeMap::new(),
         error: false,
-        children: convert_frame(&page.frame, world),
+        children: convert_frame(&page.frame, source),
     });
 
     AnalysisNode {
         kind: String::from("Document"),
-        start: None,
-        end: None,
+        range: None,
         text: None,
         attrs: BTreeMap::new(),
         error: false,
@@ -158,23 +167,25 @@ fn convert_document(document: &PagedDocument, world: &dyn World) -> AnalysisNode
     }
 }
 
-fn convert_frame(frame: &Frame, world: &dyn World) -> Vec<AnalysisNode> {
+fn convert_frame(frame: &Frame, source: &Source) -> Vec<AnalysisNode> {
     let mut result = vec![];
 
     for (_, item) in frame.items() {
         match item {
             FrameItem::Group(group) => result.push(AnalysisNode {
                 kind: String::from("Group"),
-                start: None,
-                end: None,
+                range: None,
                 text: None,
                 attrs: BTreeMap::new(),
                 error: false,
-                children: convert_frame(&group.frame, world),
+                children: convert_frame(&group.frame, source),
             }),
             FrameItem::Text(text) => {
-                let (start, end) = if !text.glyphs.is_empty() {
-                    let ranges = text.glyphs.iter().filter_map(|g| world.range(g.span.0));
+                let range = if !text.glyphs.is_empty() {
+                    let ranges = text
+                        .glyphs
+                        .iter()
+                        .filter_map(|g| process_span(g.span.0, source));
 
                     let mut start = usize::MAX;
                     let mut end = usize::MIN;
@@ -183,15 +194,14 @@ fn convert_frame(frame: &Frame, world: &dyn World) -> Vec<AnalysisNode> {
                         end = end.max(range.end);
                     }
 
-                    (Some(start), Some(end))
+                    Some((start..end).into())
                 } else {
-                    (None, None)
+                    None
                 };
 
                 result.push(AnalysisNode {
                     kind: String::from("Text"),
-                    start: start,
-                    end: end,
+                    range,
                     text: Some(text.text.to_string()),
                     attrs: BTreeMap::new(),
                     error: false,
@@ -199,12 +209,11 @@ fn convert_frame(frame: &Frame, world: &dyn World) -> Vec<AnalysisNode> {
                 });
             }
             FrameItem::Shape(_shape, span) => {
-                let range = world.range(*span);
+                let range = process_span(*span, source);
 
                 result.push(AnalysisNode {
                     kind: String::from("Shape"),
-                    start: range.as_ref().map(|r| r.start),
-                    end: range.as_ref().map(|r| r.end),
+                    range,
                     text: None,
                     attrs: BTreeMap::new(),
                     error: false,
@@ -212,12 +221,11 @@ fn convert_frame(frame: &Frame, world: &dyn World) -> Vec<AnalysisNode> {
                 });
             }
             FrameItem::Image(_image, _axes, span) => {
-                let range = world.range(*span);
+                let range = process_span(*span, source);
 
                 result.push(AnalysisNode {
                     kind: String::from("Image"),
-                    start: range.as_ref().map(|r| r.start),
-                    end: range.as_ref().map(|r| r.end),
+                    range,
                     text: None,
                     attrs: BTreeMap::new(),
                     error: false,
@@ -226,8 +234,7 @@ fn convert_frame(frame: &Frame, world: &dyn World) -> Vec<AnalysisNode> {
             }
             FrameItem::Link(_destination, _axes) => result.push(AnalysisNode {
                 kind: String::from("Link"),
-                start: None,
-                end: None,
+                range: None,
                 text: None,
                 attrs: BTreeMap::new(),
                 error: false,
@@ -235,8 +242,7 @@ fn convert_frame(frame: &Frame, world: &dyn World) -> Vec<AnalysisNode> {
             }),
             FrameItem::Tag(_tag) => result.push(AnalysisNode {
                 kind: String::from("Tag"),
-                start: None,
-                end: None,
+                range: None,
                 text: None,
                 attrs: BTreeMap::new(),
                 error: false,
@@ -250,18 +256,31 @@ fn convert_frame(frame: &Frame, world: &dyn World) -> Vec<AnalysisNode> {
 
 fn convert_diagnostics(
     diagnostics: &EcoVec<typst::diag::SourceDiagnostic>,
-    world: &dyn World,
+    source: &Source,
 ) -> Vec<Diagnostic> {
     diagnostics
         .iter()
-        .map(|diag| {
-            let range = world.range(diag.span);
-
-            Diagnostic {
-                message: diag.message.to_string(),
-                start: range.as_ref().map(|r| r.start),
-                end: range.as_ref().map(|r| r.end),
-            }
+        .map(|diag| Diagnostic {
+            message: diag.message.to_string(),
+            range: process_span(diag.span, source),
         })
         .collect()
+}
+
+fn process_span(span: impl Into<DiagSpan>, source: &Source) -> Option<SourceRange> {
+    let span = span.into();
+    match span.get() {
+        DiagSpanKind::Number { id, num, sub_range } if id == source.id() => {
+            let range = source.range(num, sub_range)?;
+            process_range(range, source)
+        }
+        _ => None,
+    }
+}
+
+fn process_range(range: Range<usize>, source: &Source) -> Option<SourceRange> {
+    let start = source.lines().byte_to_utf16(range.start)?;
+    let end = source.lines().byte_to_utf16(range.end)?;
+
+    Some((start..end).into())
 }

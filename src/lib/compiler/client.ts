@@ -20,7 +20,6 @@ function spawn(): Worker {
         pending.delete(e.data.id);
 
         if (e.data.ok) {
-            console.log(e.data.analysis);
             p.resolve(e.data.analysis);
         }
         else {
