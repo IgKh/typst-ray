@@ -1,15 +1,16 @@
 <!-- SPDX-FileCopyrightText: 2026 Igor Khanin -->
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-    import {EditorState, StateEffect, StateField} from "@codemirror/state";
-    import {EditorView, Decoration} from "@codemirror/view";
+    import {EditorState, Prec, StateEffect, StateField} from "@codemirror/state";
+    import {EditorView, Decoration, keymap} from "@codemirror/view";
     import {basicSetup} from "codemirror";
 
     import type {DecorationSet} from "@codemirror/view";
     import type {SourceRange} from "./compiler/types";
 
     let {
-        value = $bindable('')
+        value = $bindable(''),
+        onsubmit
     } = $props();
 
     let view: EditorView;
@@ -62,6 +63,15 @@
         const state = EditorState.create({
             doc: value,
             extensions: [
+                Prec.highest(keymap.of([
+                    {
+                        key: "Mod-Enter",
+                        run: () => {
+                            onsubmit?.();
+                            return true;
+                        }
+                    }
+                ])),
                 basicSetup,
                 highlightField,
                 EditorView.updateListener.of((update) => {

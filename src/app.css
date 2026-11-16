@@ -5,7 +5,7 @@
     --fg:#1d1f21;
     --muted:#777;
     --line:#ddd;
-    --accent:#239dad;
+    --accent:#187eaa;
     --hl:#ffe58a;
 }
 @media (prefers-color-scheme: dark) {
@@ -14,7 +14,7 @@
         --fg:#e4e6e8;
         --muted:#8a9096;
         --line:#33373b;
-        --accent:#4cc3d3;
+        --accent:#63bde3;
         --hl:#6b5a14;
     }
 }
