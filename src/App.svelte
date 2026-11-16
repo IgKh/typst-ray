@@ -43,6 +43,11 @@
         const range = $state.snapshot(node?.range);
         editor.highlightRange(range);
     }
+
+    function onTreeNodeClick(node: AnalysisNode) {
+        const range = $state.snapshot(node?.range);
+        editor.scrollToRange(range);
+    }
 </script>
 
 <header>
@@ -85,12 +90,12 @@
         <div class="result-panel">
             {#if result}
                 {#if activeTab === 'ast'}
-                    <TreeNode node={result.ast} onhover={onTreeNodeHover} />
+                    <TreeNode node={result.ast} onhover={onTreeNodeHover} onclick={onTreeNodeClick} />
                 {:else if activeTab === 'content'}
-                    <TreeNode node={result.content} onhover={onTreeNodeHover} />
+                    <TreeNode node={result.content} onhover={onTreeNodeHover} onclick={onTreeNodeClick} />
                 {:else if activeTab === 'layout'}
                     {#key activeLayoutIndex}
-                        <TreeNode node={result.layouts[activeLayoutIndex]} onhover={onTreeNodeHover} />
+                        <TreeNode node={result.layouts[activeLayoutIndex]} onhover={onTreeNodeHover} onclick={onTreeNodeClick} />
                     {/key}
                 {/if}
             {:else}

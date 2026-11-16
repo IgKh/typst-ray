@@ -1,11 +1,13 @@
 <!-- SPDX-FileCopyrightText: 2026 Igor Khanin -->
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
+    import NodeAttributes from "./NodeAttributes.svelte";
     import TreeNode from "./TreeNode.svelte";
 
     let {
         node,
         onhover,
+        onclick,
         depth = 0
     } = $props();
 
@@ -17,21 +19,29 @@
 {#if hasChildren}
     <details bind:open>
         <summary onmouseenter={() => onhover(node)} onmouseleave={() => onhover(null)}>
-            <b>{node.kind}</b> <span class="label">{node.text}</span>
+            <b>{node.kind}</b>
+            {#if node.text}<bdi class="label" title={node.text}>{node.text}</bdi>{/if}
             <span class="range">{node.range?.start}..{node.range?.end}</span>
+            <NodeAttributes attrs={node.attrs} />
         </summary>
         {#if open}
             <div class="children">
                 {#each node.children as child}
-                    <TreeNode node={child} onhover={onhover} depth={depth + 1} />
+                    <TreeNode node={child} onhover={onhover} onclick={onclick} depth={depth + 1} />
                 {/each}
             </div>
         {/if}
     </details>
 {:else}
-    <div class="leaf" role="presentation" onmouseenter={() => onhover(node)} onmouseleave={() => onhover(null)}>
-        <b>{node.kind}</b> <span class="label">{node.text}</span>
+    <div class="leaf"
+         role="presentation"
+         onmouseenter={() => onhover(node)}
+         onmouseleave={() => onhover(null)}
+         onclick={() => onclick(node)}>
+        <b>{node.kind}</b>
+        {#if node.text}<bdi class="label" title={node.text}>{node.text}</bdi>{/if}
         <span class="range">{node.range?.start}..{node.range?.end}</span>
+        <NodeAttributes attrs={node.attrs} />
     </div>
 {/if}
 
@@ -57,6 +67,12 @@
 
     .label {
         color: var(--accent);
+        display: inline-block;
+        max-width: 40ch;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        vertical-align: bottom;
     }
 
     .range {

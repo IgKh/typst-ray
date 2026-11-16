@@ -6,7 +6,9 @@ use serde::Serialize;
 use typst::{
     ecow::EcoVec,
     foundations::{Content, Repr, Value},
+    introspection::Tag,
     layout::{Frame, FrameItem},
+    visualize::FixedStroke,
 };
 use typst_layout::PagedDocument;
 use typst_syntax::{DiagSpan, DiagSpanKind, LinkedNode, Source};
@@ -104,13 +106,25 @@ fn collect_content_attributes(
     match value {
         Value::Content(c) => children.push(convert_content(c, source)),
         Value::Array(arr) => {
-            for item in arr {
-                collect_content_attributes(name, item, source, attrs, children);
+            for (idx, item) in arr.iter().enumerate() {
+                collect_content_attributes(
+                    &format!("{name}[{idx}]"),
+                    item,
+                    source,
+                    attrs,
+                    children,
+                );
             }
         }
         Value::Dict(dict) => {
-            for (_, value) in dict {
-                collect_content_attributes(name, value, source, attrs, children);
+            for (key, value) in dict {
+                collect_content_attributes(
+                    &format!("{name}.{key}"),
+                    value,
+                    source,
+                    attrs,
+                    children,
+                );
             }
         }
         _ => {
@@ -135,7 +149,9 @@ fn convert_content(content: &Content, source: &Source) -> AnalysisNode {
 
     // TODO - decide how to present StyledElem
 
-    let text = attrs.remove("text");
+    let text = attrs
+        .remove("text")
+        .map(|s| s.trim_prefix("\"").trim_suffix("\"").to_string());
 
     AnalysisNode {
         kind: content.elem().name().to_string(),
@@ -181,12 +197,13 @@ fn convert_frame(frame: &Frame, source: &Source) -> Vec<AnalysisNode> {
                 children: convert_frame(&group.frame, source),
             }),
             FrameItem::Text(text) => {
-                let range = if !text.glyphs.is_empty() {
-                    let ranges = text
-                        .glyphs
-                        .iter()
-                        .filter_map(|g| process_span(g.span.0, source));
+                let mut ranges = text
+                    .glyphs
+                    .iter()
+                    .filter_map(|g| process_span(g.span.0, source))
+                    .peekable();
 
+                let range = if ranges.peek().is_some() {
                     let mut start = usize::MAX;
                     let mut end = usize::MIN;
                     for range in ranges {
@@ -203,24 +220,24 @@ fn convert_frame(frame: &Frame, source: &Source) -> Vec<AnalysisNode> {
                     kind: String::from("Text"),
                     range,
                     text: Some(text.text.to_string()),
-                    attrs: BTreeMap::new(),
+                    attrs: get_text_item_attrs(text),
                     error: false,
                     children: vec![],
                 });
             }
-            FrameItem::Shape(_shape, span) => {
+            FrameItem::Shape(shape, span) => {
                 let range = process_span(*span, source);
 
                 result.push(AnalysisNode {
                     kind: String::from("Shape"),
                     range,
                     text: None,
-                    attrs: BTreeMap::new(),
+                    attrs: get_shape_attrs(shape),
                     error: false,
                     children: vec![],
                 });
             }
-            FrameItem::Image(_image, _axes, span) => {
+            FrameItem::Image(_image, _, span) => {
                 let range = process_span(*span, source);
 
                 result.push(AnalysisNode {
@@ -232,16 +249,24 @@ fn convert_frame(frame: &Frame, source: &Source) -> Vec<AnalysisNode> {
                     children: vec![],
                 });
             }
-            FrameItem::Link(_destination, _axes) => result.push(AnalysisNode {
+            FrameItem::Link(destination, _) => result.push(AnalysisNode {
                 kind: String::from("Link"),
                 range: None,
                 text: None,
-                attrs: BTreeMap::new(),
+                attrs: get_link_attrs(destination),
                 error: false,
                 children: vec![],
             }),
-            FrameItem::Tag(_tag) => result.push(AnalysisNode {
-                kind: String::from("Tag"),
+            FrameItem::Tag(Tag::Start(content, _)) => result.push(AnalysisNode {
+                kind: String::from("Tag::Start"),
+                range: process_span(content.span(), source),
+                text: None,
+                attrs: get_start_tag_attrs(content),
+                error: false,
+                children: vec![],
+            }),
+            FrameItem::Tag(Tag::End(_, _, _)) => result.push(AnalysisNode {
+                kind: String::from("Tag::End"),
                 range: None,
                 text: None,
                 attrs: BTreeMap::new(),
@@ -252,6 +277,80 @@ fn convert_frame(frame: &Frame, source: &Source) -> Vec<AnalysisNode> {
     }
 
     result
+}
+
+fn get_text_item_attrs(item: &typst::text::TextItem) -> BTreeMap<String, String> {
+    let mut attrs = BTreeMap::new();
+
+    let font = item.font.font().info();
+
+    attrs.insert(
+        String::from("font"),
+        format!("{} ({:?})", font.family, font.variant.style),
+    );
+    attrs.insert(String::from("size"), item.size.repr().to_string());
+    attrs.insert(String::from("lang"), item.lang.as_str().to_string());
+
+    if item.fill != typst::visualize::Paint::Solid(typst::visualize::Color::BLACK) {
+        attrs.insert(String::from("fill"), item.fill.repr().to_string());
+    }
+    if let Some(ref stroke) = item.stroke {
+        attrs.insert(String::from("stroke"), describe_stroke(stroke));
+    }
+    if let Some(ref region) = item.region {
+        attrs.insert(String::from("region"), region.as_str().to_string());
+    }
+    if !item.glyphs.is_empty() {
+        attrs.insert(String::from("glyphs"), format!("{}", item.glyphs.len()));
+    }
+
+    attrs
+}
+
+fn get_shape_attrs(shape: &typst::visualize::Shape) -> BTreeMap<String, String> {
+    let mut attrs = BTreeMap::new();
+
+    let geometry = match shape.geometry {
+        typst::visualize::Geometry::Line(_) => String::from("Line"),
+        typst::visualize::Geometry::Rect(_) => String::from("Rect"),
+        typst::visualize::Geometry::Curve(_) => String::from("Curve"),
+    };
+
+    attrs.insert(String::from("geometry"), geometry);
+
+    if let Some(ref fill) = shape.fill {
+        attrs.insert(String::from("fill"), fill.repr().to_string());
+    }
+    if let Some(ref stroke) = shape.stroke {
+        attrs.insert(String::from("stroke"), describe_stroke(stroke));
+    }
+
+    attrs
+}
+
+fn get_link_attrs(destination: &typst::model::Destination) -> BTreeMap<String, String> {
+    let mut attrs = BTreeMap::new();
+
+    attrs.insert(String::from("destination"), destination.repr().to_string());
+
+    attrs
+}
+
+fn get_start_tag_attrs(content: &Content) -> BTreeMap<String, String> {
+    let mut attrs = BTreeMap::new();
+
+    attrs.insert(String::from("elem"), content.elem().name().to_string());
+
+    if let Some(label) = content.label() {
+        attrs.insert(String::from("label"), label.resolve().to_string());
+    }
+
+    attrs
+}
+
+fn describe_stroke(stroke: &FixedStroke) -> String {
+    // FIXME do better than this
+    format!("{:?}", stroke)
 }
 
 fn convert_diagnostics(

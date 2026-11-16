@@ -59,6 +59,16 @@
         });
     }
 
+    export function scrollToRange(range: SourceRange | null) {
+        if (!range) {
+            return;
+        }
+        view?.dispatch({
+            selection: { anchor: range.start, head: range.end },
+            scrollIntoView: true
+        });
+    }
+
     function codemirror(node: Element) {
         const state = EditorState.create({
             doc: value,
