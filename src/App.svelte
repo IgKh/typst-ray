@@ -37,6 +37,8 @@
             if (!result.content || (activeTab === "layout" && result.layouts.length === 0)) {
                 activeTab = "ast";
             }
+
+            editor.setCompilerDiagnostics(result.diagnostics);
         } catch (err) {
             if (err instanceof Error) {
                 systemError = err.message;

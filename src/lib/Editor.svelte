@@ -1,12 +1,23 @@
 <!-- SPDX-FileCopyrightText: 2026 Igor Khanin -->
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-    import { EditorState, Prec, StateEffect, StateField } from "@codemirror/state";
-    import { EditorView, Decoration, keymap } from "@codemirror/view";
-    import { basicSetup } from "codemirror";
+    import { EditorState, StateEffect, StateField } from "@codemirror/state";
+    import {
+        EditorView,
+        Decoration,
+        keymap,
+        lineNumbers,
+        highlightActiveLineGutter,
+        highlightSpecialChars,
+        drawSelection,
+        dropCursor,
+        highlightActiveLine,
+    } from "@codemirror/view";
+    import { defaultKeymap } from "@codemirror/commands";
+    import { setDiagnostics } from "@codemirror/lint";
 
     import type { DecorationSet } from "@codemirror/view";
-    import type { SourceRange } from "./compiler/types";
+    import type { Diagnostic, SourceRange } from "./compiler/types";
 
     let { value = $bindable(""), onsubmit } = $props();
 
@@ -50,6 +61,21 @@
         },
     });
 
+    export function setCompilerDiagnostics(diagnostics: Diagnostic[]) {
+        const editorDiagnostics = diagnostics
+            .filter((diag) => diag.range !== null)
+            .map((diag) => ({
+                from: diag.range!.start,
+                to: diag.range!.end,
+                severity: "error" as const,
+                message: diag.message,
+            }));
+
+        if (view) {
+            view.dispatch(setDiagnostics(view.state, editorDiagnostics));
+        }
+    }
+
     export function highlightRange(range: SourceRange | null) {
         view?.dispatch({
             effects: setHighlight.of(range),
@@ -79,18 +105,22 @@
         const state = EditorState.create({
             doc: value,
             extensions: [
-                Prec.highest(
-                    keymap.of([
-                        {
-                            key: "Mod-Enter",
-                            run: () => {
-                                onsubmit?.();
-                                return true;
-                            },
+                lineNumbers(),
+                highlightActiveLineGutter(),
+                highlightSpecialChars(),
+                drawSelection(),
+                dropCursor(),
+                highlightActiveLine(),
+                keymap.of([
+                    {
+                        key: "Mod-Enter",
+                        run: () => {
+                            onsubmit?.();
+                            return true;
                         },
-                    ])
-                ),
-                basicSetup,
+                    },
+                    ...defaultKeymap,
+                ]),
                 highlightField,
                 EditorView.updateListener.of((update) => {
                     if (update.docChanged) {
@@ -143,5 +173,9 @@
 
     :global(.cm-hl) {
         background: var(--hl);
+    }
+
+    :global(.cm-focused) {
+        outline: none !important;
     }
 </style>
