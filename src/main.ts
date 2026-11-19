@@ -1,13 +1,13 @@
 // SPDX-FileCopyrightText: 2026 Igor Khanin
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { mount } from 'svelte'
+import { mount } from "svelte";
 
-import './app.css'
+import "./app.css";
 
-import App from './App.svelte'
+import App from "./App.svelte";
 
 const app = mount(App, {
-    target: document.getElementById('app')!,
-})
+    target: document.getElementById("app")!,
+});
 
-export default app
+export default app;

@@ -3,9 +3,7 @@
 <script lang="ts">
     const ATTR_LIMIT = 3;
 
-    let {
-        attrs
-    } = $props();
+    let { attrs } = $props();
 
     let expanded = $state(false);
 
@@ -51,7 +49,8 @@
         padding: 0 5px;
         border: 1px solid var(--line);
         border-radius: 8px;
-        font: 11px ui-monospace, monospace;
+        font-size: 11px;
+        font-family: ui-monospace, monospace;
         line-height: 16px;
         white-space: nowrap;
     }

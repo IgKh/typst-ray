@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: 2026 Igor Khanin
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import type { Request, Response } from "./types.ts"
+import type { Request, Response } from "./types.ts";
 
-import init, { Fonts, analyze } from "../../../wasm/typstray_wasm.js"
-import wasmUrl from "../../../wasm/typstray_wasm_bg.wasm?url"
+import init, { Fonts, analyze } from "../../../wasm/typstray_wasm.js";
+import wasmUrl from "../../../wasm/typstray_wasm_bg.wasm?url";
 
 const fontsBase = `${import.meta.env.BASE_URL}fonts/`;
 
@@ -19,10 +19,7 @@ async function loadFonts() {
 }
 
 async function setup(): Promise<Fonts> {
-    const [, fontData] = await Promise.all([
-        init({ module_or_path: wasmUrl }),
-        loadFonts(),
-    ]);
+    const [, fontData] = await Promise.all([init({ module_or_path: wasmUrl }), loadFonts()]);
     return new Fonts(fontData);
 }
 
@@ -34,9 +31,8 @@ self.onmessage = async (e: MessageEvent<Request>) => {
     try {
         const fonts = await ready;
         res = { id, ok: true, analysis: JSON.parse(analyze(src, fonts)) };
-    }
-    catch (err) {
+    } catch (err) {
         res = { id, ok: false, error: String(err) };
     }
     self.postMessage(res);
-}
+};

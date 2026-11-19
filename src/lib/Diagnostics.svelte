@@ -1,11 +1,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Igor Khanin -->
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-    let {
-        diagnostics,
-        systemError,
-        onclick
-    } = $props();
+    let { diagnostics, systemError, onclick } = $props();
 </script>
 
 {#if systemError || diagnostics?.length > 0}
@@ -20,7 +16,7 @@
         {/if}
         {#each diagnostics ?? [] as diag}
             <li>
-                <button type="button" disabled={!diag.range} onclick={() => (onclick(diag))}>
+                <button type="button" disabled={!diag.range} onclick={() => onclick(diag)}>
                     <span class="badge" aria-label="Error">!</span>
                     <span class="message">{diag.message}</span>
                     {#if diag.range}
@@ -38,7 +34,8 @@
         margin: 0;
         padding: 0;
         border-top: 1px solid var(--line);
-        font: 13px ui-monospace, monospace;
+        font-size: 13px;
+        font-family: ui-monospace, monospace;
     }
 
     li {

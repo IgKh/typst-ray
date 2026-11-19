@@ -1,17 +1,14 @@
 <!-- SPDX-FileCopyrightText: 2026 Igor Khanin -->
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-    import {EditorState, Prec, StateEffect, StateField} from "@codemirror/state";
-    import {EditorView, Decoration, keymap} from "@codemirror/view";
-    import {basicSetup} from "codemirror";
+    import { EditorState, Prec, StateEffect, StateField } from "@codemirror/state";
+    import { EditorView, Decoration, keymap } from "@codemirror/view";
+    import { basicSetup } from "codemirror";
 
-    import type {DecorationSet} from "@codemirror/view";
-    import type {SourceRange} from "./compiler/types";
+    import type { DecorationSet } from "@codemirror/view";
+    import type { SourceRange } from "./compiler/types";
 
-    let {
-        value = $bindable(''),
-        onsubmit
-    } = $props();
+    let { value = $bindable(""), onsubmit } = $props();
 
     let view: EditorView;
 
@@ -22,13 +19,13 @@
             }
             return {
                 start: change.mapPos(range.start),
-                end: change.mapPos(range.end)
+                end: change.mapPos(range.end),
             };
-        }
+        },
     });
 
     const highlightMark = Decoration.mark({
-        class: "cm-hl"
+        class: "cm-hl",
     });
 
     const highlightField = StateField.define<DecorationSet>({
@@ -50,12 +47,12 @@
         },
         provide(field) {
             return EditorView.decorations.from(field);
-        }
+        },
     });
 
     export function highlightRange(range: SourceRange | null) {
         view?.dispatch({
-            effects: setHighlight.of(range)
+            effects: setHighlight.of(range),
         });
     }
 
@@ -68,9 +65,9 @@
         view?.dispatch({
             selection: {
                 anchor: Math.min(range.start, len),
-                head: Math.min(range.end, len)
+                head: Math.min(range.end, len),
             },
-            scrollIntoView: true
+            scrollIntoView: true,
         });
 
         if (focus) {
@@ -82,23 +79,25 @@
         const state = EditorState.create({
             doc: value,
             extensions: [
-                Prec.highest(keymap.of([
-                    {
-                        key: "Mod-Enter",
-                        run: () => {
-                            onsubmit?.();
-                            return true;
-                        }
-                    }
-                ])),
+                Prec.highest(
+                    keymap.of([
+                        {
+                            key: "Mod-Enter",
+                            run: () => {
+                                onsubmit?.();
+                                return true;
+                            },
+                        },
+                    ])
+                ),
                 basicSetup,
                 highlightField,
                 EditorView.updateListener.of((update) => {
                     if (update.docChanged) {
                         value = update.state.doc.toString();
                     }
-                })
-            ]
+                }),
+            ],
         });
 
         view = new EditorView({
@@ -109,21 +108,21 @@
         return {
             destroy() {
                 view?.destroy();
-            }
-        }
+            },
+        };
     }
 
     $effect(() => {
         if (view && value !== view.state.doc.toString()) {
             view.dispatch({
-				changes: {
+                changes: {
                     from: 0,
                     to: view.state.doc.length,
-                    insert: value
-                }
-			});
+                    insert: value,
+                },
+            });
         }
-    })
+    });
 </script>
 
 <div class="editor-container" use:codemirror></div>

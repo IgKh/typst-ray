@@ -5,7 +5,7 @@
     import Editor from "./lib/Editor.svelte";
     import TreeNode from "./lib/TreeNode.svelte";
 
-    import { analyze } from "./lib/compiler/client"
+    import { analyze } from "./lib/compiler/client";
     import type { Analysis, AnalysisNode, Diagnostic } from "./lib/compiler/types";
 
     let src = $state("FOO");
@@ -37,16 +37,13 @@
             if (!result.content || (activeTab === "layout" && result.layouts.length === 0)) {
                 activeTab = "ast";
             }
-        }
-        catch (err) {
+        } catch (err) {
             if (err instanceof Error) {
                 systemError = err.message;
-            }
-            else {
+            } else {
                 systemError = String(err);
             }
-        }
-        finally {
+        } finally {
             busy = false;
         }
     }
@@ -73,8 +70,14 @@
 <main>
     <section id="editor-section">
         <nav>
-            <button class:stale={stale && !busy} onclick={compile} disabled={busy}
-                    title={stale ? "Source changed since last compile (Ctrl+Enter)" : "Compile (Ctrl+Enter)"}>
+            <button
+                class:stale={stale && !busy}
+                onclick={compile}
+                disabled={busy}
+                title={stale
+                    ? "Source changed since last compile (Ctrl+Enter)"
+                    : "Compile (Ctrl+Enter)"}
+            >
                 <svg width="12" height="12" aria-hidden="true">
                     <use href="/icons.svg#play-icon" />
                 </svg>
@@ -85,25 +88,35 @@
             <Editor onsubmit={compile} bind:value={src} bind:this={editor} />
         </div>
         <div id="diagnostics-wrapper" role="region" aria-label="Diagnostics">
-            <Diagnostics diagnostics={result?.diagnostics} systemError={systemError} onclick={onDiagnosticClick} />
+            <Diagnostics
+                diagnostics={result?.diagnostics}
+                {systemError}
+                onclick={onDiagnosticClick}
+            />
         </div>
     </section>
 
     <section id="results-section">
         <nav>
-            <button class:active={activeTab === 'ast'}
-                    onclick={() => (activeTab = 'ast')}
-                    disabled={!result} >
+            <button
+                class:active={activeTab === "ast"}
+                onclick={() => (activeTab = "ast")}
+                disabled={!result}
+            >
                 AST
             </button>
-            <button class:active={activeTab === 'content'}
-                    onclick={() => (activeTab = 'content')}
-                    disabled={!result?.content}>
+            <button
+                class:active={activeTab === "content"}
+                onclick={() => (activeTab = "content")}
+                disabled={!result?.content}
+            >
                 Content
             </button>
             {#each result?.layouts ?? [] as _, index}
-                <button class:active={activeTab === 'layout' && activeLayoutIndex === index}
-                        onclick={() => (activeTab = 'layout', activeLayoutIndex = index)}>
+                <button
+                    class:active={activeTab === "layout" && activeLayoutIndex === index}
+                    onclick={() => ((activeTab = "layout"), (activeLayoutIndex = index))}
+                >
                     Layout #{index + 1}
                 </button>
             {:else}
@@ -112,13 +125,25 @@
         </nav>
         <div class="result-panel">
             {#if result}
-                {#if activeTab === 'ast'}
-                    <TreeNode node={result.ast} onhover={onTreeNodeHover} onclick={onTreeNodeClick} />
-                {:else if activeTab === 'content'}
-                    <TreeNode node={result.content} onhover={onTreeNodeHover} onclick={onTreeNodeClick} />
-                {:else if activeTab === 'layout'}
+                {#if activeTab === "ast"}
+                    <TreeNode
+                        node={result.ast}
+                        onhover={onTreeNodeHover}
+                        onclick={onTreeNodeClick}
+                    />
+                {:else if activeTab === "content"}
+                    <TreeNode
+                        node={result.content}
+                        onhover={onTreeNodeHover}
+                        onclick={onTreeNodeClick}
+                    />
+                {:else if activeTab === "layout"}
                     {#key activeLayoutIndex}
-                        <TreeNode node={result.layouts[activeLayoutIndex]} onhover={onTreeNodeHover} onclick={onTreeNodeClick} />
+                        <TreeNode
+                            node={result.layouts[activeLayoutIndex]}
+                            onhover={onTreeNodeHover}
+                            onclick={onTreeNodeClick}
+                        />
                     {/key}
                 {/if}
             {:else}
@@ -252,6 +277,8 @@
         flex: 1;
         overflow: auto;
         padding: 8px 12px;
-        font: 13px ui-monospace, monospace;
+        font:
+            13px ui-monospace,
+            monospace;
     }
 </style>

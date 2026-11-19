@@ -4,12 +4,7 @@
     import NodeAttributes from "./NodeAttributes.svelte";
     import TreeNode from "./TreeNode.svelte";
 
-    let {
-        node,
-        onhover,
-        onclick,
-        depth = 0
-    } = $props();
+    let { node, onhover, onclick, depth = 0 } = $props();
 
     let open = $state(true);
 
@@ -27,17 +22,19 @@
         {#if open}
             <div class="children">
                 {#each node.children as child}
-                    <TreeNode node={child} onhover={onhover} onclick={onclick} depth={depth + 1} />
+                    <TreeNode node={child} {onhover} {onclick} depth={depth + 1} />
                 {/each}
             </div>
         {/if}
     </details>
 {:else}
-    <div class="leaf"
-         role="presentation"
-         onmouseenter={() => onhover(node)}
-         onmouseleave={() => onhover(null)}
-         onclick={() => onclick(node)}>
+    <div
+        class="leaf"
+        role="presentation"
+        onmouseenter={() => onhover(node)}
+        onmouseleave={() => onhover(null)}
+        onclick={() => onclick(node)}
+    >
         <b class:error={node.error}>{node.kind}</b>
         {#if node.text}<bdi class="label" title={node.text}>{node.text}</bdi>{/if}
         <span class="range">{node.range?.start}..{node.range?.end}</span>
@@ -52,7 +49,8 @@
         padding-left: 6px;
     }
 
-    summary, .leaf {
+    summary,
+    .leaf {
         cursor: default;
         padding: 1px 2px;
     }
@@ -61,7 +59,8 @@
         margin-left: 14px;
     }
 
-    summary:hover, .leaf:hover {
+    summary:hover,
+    .leaf:hover {
         background: var(--hl);
     }
 

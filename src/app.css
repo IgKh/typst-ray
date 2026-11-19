@@ -1,27 +1,28 @@
 /* SPDX-FileCopyrightText: 2026 Igor Khanin */
 /* SPDX-License-Identifier: AGPL-3.0-or-later */
 :root {
-    --bg:#fff;
-    --fg:#1d1f21;
-    --muted:#777;
-    --line:#ddd;
-    --accent:#187eaa;
-    --hl:#ffe58a;
-    --error:#d33a3a;
+    --bg: #fff;
+    --fg: #1d1f21;
+    --muted: #777;
+    --line: #ddd;
+    --accent: #187eaa;
+    --hl: #ffe58a;
+    --error: #d33a3a;
 }
 @media (prefers-color-scheme: dark) {
     :root {
-        --bg:#16181a;
-        --fg:#e4e6e8;
-        --muted:#8a9096;
-        --line:#33373b;
-        --accent:#63bde3;
-        --hl:#6b5a14;
-        --error:#e5605e;
+        --bg: #16181a;
+        --fg: #e4e6e8;
+        --muted: #8a9096;
+        --line: #33373b;
+        --accent: #63bde3;
+        --hl: #6b5a14;
+        --error: #e5605e;
     }
 }
 
-html, body {
+html,
+body {
     height: 100%;
     margin: 0;
 }
@@ -29,7 +30,8 @@ html, body {
 body {
     background: var(--bg);
     color: var(--fg);
-    font: 14px system-ui, sans-serif;
+    font-size: 14px;
+    font-family: system-ui, sans-serif;
 }
 
 #app {
