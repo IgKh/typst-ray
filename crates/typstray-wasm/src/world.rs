@@ -18,20 +18,32 @@ static SOURCE_ID: LazyLock<FileId> = LazyLock::new(|| {
     ))
 });
 
-pub struct TypstRayWorld {
-    library: LazyHash<Library>,
+#[derive(Default)]
+pub struct Fonts {
     book: LazyHash<FontBook>,
     fonts: Vec<Font>,
-    source: Source,
 }
 
-impl TypstRayWorld {
-    pub fn new(content: &str) -> Self {
-        let fonts: Vec<_> = typst_assets::fonts()
-            .flat_map(|data| Font::iter(Bytes::new(data)))
-            .collect();
+impl Fonts {
+    pub fn new(data: impl Iterator<Item = Vec<u8>>) -> Self {
+        let fonts: Vec<Font> = data.flat_map(|data| Font::iter(Bytes::new(data))).collect();
         let book = FontBook::from_fonts(&fonts);
+        Self {
+            book: LazyHash::new(book),
+            fonts,
+        }
+    }
+}
 
+pub struct TypstRayWorld<'a> {
+    library: LazyHash<Library>,
+    fonts: &'a Fonts,
+    source: Source,
+    now: time::OffsetDateTime,
+}
+
+impl<'a> TypstRayWorld<'a> {
+    pub fn new(content: &str, fonts: &'a Fonts) -> Self {
         let library = Library::builder()
             .with_features(typst::Features::all())
             .build();
@@ -40,24 +52,24 @@ impl TypstRayWorld {
 
         Self {
             library: LazyHash::new(library),
-            book: LazyHash::new(book),
             fonts,
             source,
+            now: time::OffsetDateTime::now_utc(),
         }
     }
 }
 
-impl World for TypstRayWorld {
+impl World for TypstRayWorld<'_> {
     fn library(&self) -> &LazyHash<Library> {
         &self.library
     }
 
     fn book(&self) -> &LazyHash<FontBook> {
-        &self.book
+        &self.fonts.book
     }
 
     fn font(&self, index: usize) -> Option<Font> {
-        self.fonts.get(index).cloned()
+        self.fonts.fonts.get(index).cloned()
     }
 
     fn main(&self) -> FileId {
@@ -78,8 +90,17 @@ impl World for TypstRayWorld {
 
     fn today(
         &self,
-        _offset: Option<typst::foundations::Duration>,
+        offset: Option<typst::foundations::Duration>,
     ) -> Option<typst::foundations::Datetime> {
-        None
+        let date = match offset {
+            Some(offset) => {
+                let seconds = offset.seconds() as i32;
+                let off = time::UtcOffset::from_whole_seconds(seconds).ok()?;
+                self.now.to_offset(off).date()
+            }
+            None => self.now.date(),
+        };
+
+        Some(typst::foundations::Datetime::Date(date))
     }
 }

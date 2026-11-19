@@ -23,8 +23,24 @@ pub fn start() {
 }
 
 #[wasm_bindgen]
-pub fn analyze(src: &str) -> String {
-    let world = TypstRayWorld::new(src);
+pub struct Fonts(world::Fonts);
+
+#[wasm_bindgen]
+impl Fonts {
+    #[wasm_bindgen(constructor)]
+    pub fn new(data: js_sys::Array) -> Fonts {
+        let fonts = data.iter().filter_map(|item| {
+            item.dyn_ref::<js_sys::Uint8Array>()
+                .map(js_sys::Uint8Array::to_vec)
+        });
+
+        Fonts(world::Fonts::new(fonts))
+    }
+}
+
+#[wasm_bindgen]
+pub fn analyze(src: &str, fonts: &Fonts) -> String {
+    let world = TypstRayWorld::new(src, &fonts.0);
 
     let result = compiler::compile((&world as &dyn World).track());
     let analysis = model::build_analysis(&result);
