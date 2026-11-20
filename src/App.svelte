@@ -6,18 +6,52 @@
     import TreeNode from "./lib/TreeNode.svelte";
 
     import { analyze } from "./lib/compiler/client";
+    import {
+        clearSharingParam,
+        getInitialSource,
+        makeSharingUrl,
+        saveSource,
+    } from "./lib/util/source";
     import type { Analysis, AnalysisNode, Diagnostic } from "./lib/compiler/types";
 
-    let src = $state("FOO");
+    let { source: initialSource, shared: wasShared } = getInitialSource();
+
+    let src = $state(initialSource);
     let compiledSrc = $state<string | null>(null);
+    let sharedSrc = $state<string | null>(wasShared ? initialSource : null);
     let busy = $state(false);
     let result = $state<Analysis | null>(null);
     let systemError = $state<string | null>(null);
     let activeTab = $state("ast");
     let activeLayoutIndex = $state(0);
     let stale = $derived(result !== null && src !== compiledSrc);
+    let shareLabel = $state("Share");
 
     let editor: Editor;
+
+    $effect(() => {
+        const current = src;
+        if (current === sharedSrc) {
+            // This prevents merely opening a shared link from overriding
+            // the local storage
+            return;
+        }
+        if (sharedSrc !== null) {
+            sharedSrc = null;
+            clearSharingParam();
+        }
+        saveSource(current);
+    });
+
+    async function share() {
+        try {
+            await navigator.clipboard.writeText(makeSharingUrl(src));
+            shareLabel = "Copied!";
+        } catch {
+            shareLabel = "Failed";
+        }
+        setTimeout(() => (shareLabel = "Share"), 1500);
+    }
 
     async function compile() {
         if (busy) {
@@ -84,6 +118,9 @@
                     <use href="/icons.svg#play-icon" />
                 </svg>
                 {busy ? "Compiling..." : "Compile"}
+            </button>
+            <button onclick={share} title="Copy a shareable link to the clipboard">
+                {shareLabel}
             </button>
         </nav>
         <div id="editor-wrapper">
