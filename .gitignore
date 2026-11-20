@@ -3,6 +3,8 @@ node_modules
 dist
 target
 wasm
+public/licenses.html
+.wrangler
 *.local
 
 # Editor directories and files

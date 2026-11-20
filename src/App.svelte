@@ -29,6 +29,10 @@
 
     let editor: Editor;
 
+    const repoUrl = "https://github.com/IgKh/typst-ray";
+    const revision = __GIT_REVISION__;
+    const sourceUrl = revision ? `${repoUrl}/tree/${revision}` : repoUrl;
+
     $effect(() => {
         const current = src;
         if (current === sharedSrc) {
@@ -100,7 +104,20 @@
 </script>
 
 <header>
-    <h1><span style="color: #239dad">Typst</span>Ray</h1>
+    <a href="/" class="brand">
+        <img src="/favicon.svg" alt="" width="22" height="22" />
+        <h1><span style="color: #239dad">Typst</span>Ray</h1>
+    </a>
+    <a
+        class="github"
+        href={repoUrl}
+        title="Project page on GitHub"
+        aria-label="Project page on GitHub"
+    >
+        <svg width="32" height="32" aria-hidden="true">
+            <use href="/icons.svg#github-icon" />
+        </svg>
+    </a>
 </header>
 
 <main>
@@ -193,7 +210,18 @@
 </main>
 
 <footer>
-    <!-- TODO put links, version, etc -->
+    <span>
+        TypstRay is free software, under the terms of the
+        <a href="https://choosealicense.com/licenses/agpl-3.0/" target="_blank">AGPL 3.0</a>
+        or later
+    </span>
+    <a href={sourceUrl}>
+        Source{revision ? ` (${revision.slice(0, 7)})` : ""}
+    </a>
+    <a href="/licenses.html" target="_blank">Licenses</a>
+    <span class="stretch"></span>
+    <span>Not affiliated with Typst GmbH</span>
+    <span>Made in 🇮🇱 with ❤️</span>
 </footer>
 
 <style>
@@ -208,6 +236,33 @@
         border-bottom: 1px solid var(--line);
     }
 
+    .brand {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 22px;
+        color: inherit;
+        text-decoration: none;
+    }
+
+    .brand img {
+        flex: none;
+        transform: translateY(0.16em);
+    }
+
+    .github {
+        display: flex;
+        margin-left: auto;
+    }
+
+    header h1 {
+        font-size: inherit;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        line-height: 1;
+        margin: 0;
+    }
+
     footer {
         display: flex;
         align-items: center;
@@ -219,14 +274,15 @@
         border-top: 1px solid var(--line);
         color: var(--muted);
         font-size: 12px;
+        gap: 16px;
     }
 
-    header h1 {
-        font-size: 22px;
-        font-weight: 700;
-        letter-spacing: -0.02em;
-        margin: 0;
+    footer .stretch {
         flex: 1;
+    }
+
+    footer a {
+        color: inherit;
     }
 
     main {
