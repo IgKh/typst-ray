@@ -19,7 +19,7 @@ for arg in "$@"; do
     esac
 done
 
-for crate in crates/typstray-[0-9]*; do
+for crate in crates/typstray-[0-9]* crates/typstray-dev; do
     version="${crate#crates/typstray-}"
     out="wasm/$version"
 
