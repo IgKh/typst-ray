@@ -6,6 +6,7 @@
     import TreeNode from "./lib/TreeNode.svelte";
 
     import { analyze } from "./lib/compiler/client";
+    import { DEFAULT_VERSION, VERSIONS } from "./lib/compiler/versions";
     import {
         clearSharingParam,
         getInitialSource,
@@ -18,13 +19,17 @@
 
     let src = $state(initialSource);
     let compiledSrc = $state<string | null>(null);
+    let typstVersion = $state(DEFAULT_VERSION);
+    let compiledVersion = $state<string | null>(null);
     let sharedSrc = $state<string | null>(wasShared ? initialSource : null);
     let busy = $state(false);
     let result = $state<Analysis | null>(null);
     let systemError = $state<string | null>(null);
     let activeTab = $state("ast");
     let activeLayoutIndex = $state(0);
-    let stale = $derived(result !== null && src !== compiledSrc);
+    let stale = $derived(
+        result !== null && (src !== compiledSrc || typstVersion !== compiledVersion)
+    );
     let shareLabel = $state("Share");
 
     let editor: Editor;
@@ -64,9 +69,11 @@
 
         busy = true;
         const source = src;
+        const version = typstVersion;
         try {
-            result = await analyze(source);
+            result = await analyze(source, version);
             compiledSrc = source;
+            compiledVersion = version;
             systemError = null;
 
             if (activeLayoutIndex >= result.layouts.length) {
@@ -108,13 +115,22 @@
         <img src="/favicon.svg" alt="" width="22" height="22" />
         <h1><span style="color: #239dad">Typst</span>Ray</h1>
     </a>
+    <label class="version">
+        Typst version
+        <select bind:value={typstVersion} title="Typst compiler version">
+            {#each VERSIONS as v}
+                <option value={v.version}>{v.description}</option>
+            {/each}
+        </select>
+    </label>
     <a
         class="github"
         href={repoUrl}
+        target="_blank"
         title="Project page on GitHub"
         aria-label="Project page on GitHub"
     >
-        <svg width="32" height="32" aria-hidden="true">
+        <svg width="22" height="22" aria-hidden="true">
             <use href="/icons.svg#github-icon" />
         </svg>
     </a>
@@ -128,7 +144,7 @@
                 onclick={compile}
                 disabled={busy}
                 title={stale
-                    ? "Source changed since last compile (Ctrl+Enter)"
+                    ? "Source or Typst version changed since last compile (Ctrl+Enter)"
                     : "Compile (Ctrl+Enter)"}
             >
                 <svg width="12" height="12" aria-hidden="true">
@@ -250,9 +266,31 @@
         transform: translateY(0.16em);
     }
 
+    .version {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-left: auto;
+        color: var(--muted);
+    }
+
+    .version select {
+        font: inherit;
+        color: var(--fg);
+        background: var(--bg);
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        padding: 3px 6px;
+        cursor: pointer;
+    }
+
+    .version select:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 1px;
+    }
+
     .github {
         display: flex;
-        margin-left: auto;
     }
 
     header h1 {

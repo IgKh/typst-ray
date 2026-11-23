@@ -2,6 +2,23 @@
 resolver = "2"
 members = ["crates/*"]
 
+[workspace.package]
+version = "0.0.0"
+license = "AGPL-3.0-or-later"
+edition = "2024"
+rust-version = "1.100"
+publish = false
+
+[workspace.dependencies]
+typstray-common = { path = "crates/typstray-common" }
+
+wasm-bindgen = "0.2"
+js-sys = "0.3"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+time = { version = "0.3", features = ["wasm-bindgen"] }
+getrandom = { version = "0.3", features = ["wasm_js"] }
+
 [profile.release]
 opt-level = "z"
 lto = true

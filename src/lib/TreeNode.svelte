@@ -6,7 +6,8 @@
 
     let { node, onhover, onclick, depth = 0 } = $props();
 
-    let open = $state(true);
+    // svelte-ignore state_referenced_locally
+    let open = $state(depth < 3);
 
     const hasChildren = $derived(!!node.children?.length);
 </script>

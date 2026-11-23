@@ -83,8 +83,11 @@ def collect_rust_licenses() -> List[DependencyItem]:
     for pkg in data["packages"]:
         pkg_map[pkg["name"]] = pkg
 
+    workspace_members = set(data["workspace_members"])
+    roots = [pkg for pkg in data["packages"] if pkg["id"] in workspace_members]
+
     result = []
-    pkgs = [dep["name"] for dep in pkg_map["typstray-wasm"]["dependencies"]]
+    pkgs = [dep["name"] for root in roots for dep in root["dependencies"]]
     visited = set()
 
     while pkgs:

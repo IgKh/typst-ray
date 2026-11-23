@@ -5,7 +5,6 @@ use std::{
     ops::Range,
 };
 
-use serde::Serialize;
 use typst::{
     ecow::EcoVec,
     foundations::{Content, Repr, Value},
@@ -15,47 +14,9 @@ use typst::{
 };
 use typst_layout::PagedDocument;
 use typst_syntax::{DiagSpan, DiagSpanKind, LinkedNode, Source};
+use typstray_common::{Analysis, AnalysisNode, Diagnostic, SourceRange};
 
 use crate::compiler::CompilationResult;
-
-#[derive(Serialize)]
-pub struct SourceRange {
-    start: usize,
-    end: usize,
-}
-
-impl From<Range<usize>> for SourceRange {
-    fn from(value: Range<usize>) -> Self {
-        Self {
-            start: value.start,
-            end: value.end,
-        }
-    }
-}
-
-#[derive(Serialize)]
-pub struct AnalysisNode {
-    kind: String,
-    range: Option<SourceRange>,
-    text: Option<String>,
-    attrs: BTreeMap<String, String>,
-    error: bool,
-    children: Vec<AnalysisNode>,
-}
-
-#[derive(Serialize)]
-pub struct Diagnostic {
-    message: String,
-    range: Option<SourceRange>,
-}
-
-#[derive(Serialize)]
-pub struct Analysis {
-    ast: AnalysisNode,
-    content: Option<AnalysisNode>,
-    layouts: Vec<AnalysisNode>,
-    diagnostics: Vec<Diagnostic>,
-}
 
 pub fn build_analysis(result: &CompilationResult) -> Analysis {
     let source = &result.source;

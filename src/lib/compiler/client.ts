@@ -5,11 +5,15 @@ import type { Analysis, Response } from "./types";
 const TIMEOUT_MS = 5000;
 
 let worker: Worker | null = null;
+let workerVersion: string | null = null;
 let nextId = 0;
 const pending = new Map<number, { resolve: (a: Analysis) => void; reject: (e: Error) => void }>();
 
-function spawn(): Worker {
-    const w = new Worker(new URL("./worker.ts", import.meta.url), { type: "module" });
+function spawn(version: string): Worker {
+    const w = new Worker(new URL("./worker.ts", import.meta.url), {
+        type: "module",
+        name: version,
+    });
 
     w.onmessage = (e: MessageEvent<Response>) => {
         const p = pending.get(e.data.id);
@@ -33,14 +37,21 @@ function spawn(): Worker {
 function kill(reason: string) {
     worker?.terminate();
     worker = null;
+    workerVersion = null;
     for (const p of pending.values()) {
         p.reject(new Error(reason));
     }
     pending.clear();
 }
 
-export function analyze(src: string): Promise<Analysis> {
-    worker ??= spawn();
+export function analyze(src: string, version: string): Promise<Analysis> {
+    if (worker && workerVersion !== version) {
+        kill("Typst version changed");
+    }
+    if (!worker) {
+        worker = spawn(version);
+        workerVersion = version;
+    }
 
     const id = nextId++;
 
