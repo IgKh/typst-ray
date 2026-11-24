@@ -291,6 +291,7 @@
 
     .github {
         display: flex;
+        color: var(--fg);
     }
 
     header h1 {

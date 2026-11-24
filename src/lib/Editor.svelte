@@ -1,7 +1,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Igor Khanin -->
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-    import { EditorState, StateEffect, StateField } from "@codemirror/state";
+    import { Compartment, EditorState, StateEffect, StateField } from "@codemirror/state";
     import {
         EditorView,
         Decoration,
@@ -15,6 +15,7 @@
     } from "@codemirror/view";
     import { defaultKeymap } from "@codemirror/commands";
     import { setDiagnostics } from "@codemirror/lint";
+    import { MediaQuery } from "svelte/reactivity";
 
     import type { DecorationSet } from "@codemirror/view";
     import type { Diagnostic, SourceRange } from "./compiler/types";
@@ -22,6 +23,10 @@
     let { value = $bindable(""), onsubmit } = $props();
 
     let view: EditorView;
+
+    const isDarkModeQuery = new MediaQuery("(prefers-color-scheme: dark)");
+
+    const darkMode = new Compartment();
 
     const setHighlight = StateEffect.define<SourceRange | null>({
         map(range, change) {
@@ -105,6 +110,7 @@
         const state = EditorState.create({
             doc: value,
             extensions: [
+                darkMode.of(EditorView.darkTheme.of(isDarkModeQuery.current)),
                 lineNumbers(),
                 highlightActiveLineGutter(),
                 highlightSpecialChars(),
@@ -152,6 +158,12 @@
                 },
             });
         }
+    });
+
+    $effect(() => {
+        view?.dispatch({
+            effects: darkMode.reconfigure(EditorView.darkTheme.of(isDarkModeQuery.current)),
+        });
     });
 </script>
 
